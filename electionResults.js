@@ -1,11 +1,11 @@
 let fetch = require("node-fetch");
 
-async function storeNewResultsForElection(electionPath, database) {
+async function storeNewResults(electionPath, database) {
   let topLevelResults = await fetchResult(electionPath);
   await storeResults(
     topLevelResults,
     database,
-    relatedHrefToDbPath(electionPath)
+    electionPathToDbPath(electionPath)
   );
 }
 
@@ -28,14 +28,15 @@ async function storeResults(fetchedResults, database, path) {
     console.log(`NO CHANGE: ${fetchedResults.id.navn}`);
   }
   for (let relatedResult of fetchedResults["_links"].related) {
+    let relatedPath = electionPathOfRelated(relatedResult);
     if (
       await newResult(
         relatedResult,
-        relatedHrefToDbPath(hrefOfRelated(relatedResult)),
+        electionPathToDbPath(relatedPath),
         database
       )
     ) {
-      await storeRelated(relatedResult, database);
+      await storeNewResults(relatedPath, database);
     }
   }
 }
@@ -55,25 +56,15 @@ async function storeResult(fetched, dbPath, database) {
   await dbRef.set(fetched);
 }
 
-function hrefOfRelated(related) {
+function electionPathOfRelated(related) {
   return related.href;
 }
 
-function relatedHrefToDbPath(relatedHref) {
+function electionPathToDbPath(electionPath) {
   const DB_ROOT = "/valgresultat";
-  return `${DB_ROOT}${relatedHref.slice(0, 8)}${relatedHref
+  return `${DB_ROOT}${electionPath.slice(0, 8)}${electionPath
     .slice(8)
     .replace(/\//g, "/underordnet/")}`;
 }
 
-async function storeRelated(related, database) {
-  let fetchedResults = await fetchResult(hrefOfRelated(related));
-
-  await storeResults(
-    fetchedResults,
-    database,
-    relatedHrefToDbPath(hrefOfRelated(related))
-  );
-}
-
-module.exports = { storeNewResultsForElection };
+module.exports = { storeNewResults };

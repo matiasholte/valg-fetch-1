@@ -6,7 +6,7 @@ const ELECTION_PATH = "/2015/ko";
 async function run() {
   let db = await database.initialize();
   console.log("initialized database");
-  await electionResults.storeNewResultsForElection(ELECTION_PATH, db);
+  await electionResults.storeNewResults(ELECTION_PATH, db);
   console.log("stored results from api");
   console.log("done, exiting");
   process.exit(0);
