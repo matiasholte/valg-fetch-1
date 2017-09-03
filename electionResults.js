@@ -21,27 +21,34 @@ async function storeResults(results, database) {
   await _storeResults(results, database, relatedHrefToDbPath(ELECTION_ROOT));
 }
 
-async function _storeResults(fetchedResults, database, path) {
-  let dbRef = database.ref(path);
+async function newResult(fetched, dbPath, database) {
+  let dbRef = database.ref(dbPath);
   let storedData = (await dbRef.once("value")).val();
-  if (
-    !storedData ||
+  return;
+  !storedData ||
     (storedData.rapportGenerert &&
-      storedData.rapportGenerert !== fetchedResults.rapportGenerert)
-  ) {
+      storedData.rapportGenerert !== fetched.rapportGenerert);
+}
+
+async function storeResult(fetched, dbPath, database) {
+  let dbRef = database.ref(dbPath);
+  await dbRef.set(fetched);
+}
+
+async function _storeResults(fetchedResults, database, path) {
+  if (newResult(fetchedResults, path, database)) {
     console.log(`* ${fetchedResults.id.navn}`);
-    await dbRef.set(fetchedResults);
+    await storeResult(fetchedResults, path, database);
   }
-  for (let relatedLink of fetchedResults["_links"].related) {
-    let relatedRef = database.ref(relatedHrefToDbPath(relatedLink.hrefNavn));
-    let relatedData = (await relatedRef.once("value")).val();
-    //    console.log(`relatedData: ${relatedData}`, `related: ${relatedLink}`);
+  for (let relatedResult of fetchedResults["_links"].related) {
     if (
-      !relatedData ||
-      (relatedData.rapportGenerert &&
-        relatedData.rapportGenerert !== relatedLink.rapportGenerert)
+      newResult(
+        relatedResult,
+        relatedHrefToDbPath(relatedResult.hrefNavn),
+        database
+      )
     ) {
-      await storeRelated(relatedLink, database);
+      await storeRelated(relatedResult, database);
     }
   }
 }
