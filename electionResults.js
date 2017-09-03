@@ -21,13 +21,15 @@ async function fetchResult(electionPath) {
 }
 
 async function storeResults(fetchedResults, database, path) {
-  if (newResult(fetchedResults, path, database)) {
-    console.log(`* ${fetchedResults.id.navn}`);
+  if (await newResult(fetchedResults, path, database)) {
+    console.log(`NEW RESULTS: ${fetchedResults.id.navn}`);
     await storeResult(fetchedResults, path, database);
+  } else {
+    console.log(`NO CHANGE: ${fetchedResults.id.navn}`);
   }
   for (let relatedResult of fetchedResults["_links"].related) {
     if (
-      newResult(
+      await newResult(
         relatedResult,
         relatedHrefToDbPath(relatedResult.hrefNavn),
         database
@@ -41,10 +43,11 @@ async function storeResults(fetchedResults, database, path) {
 async function newResult(fetched, dbPath, database) {
   let dbRef = database.ref(dbPath);
   let storedData = (await dbRef.once("value")).val();
-  return;
-  !storedData ||
+  return (
+    !storedData ||
     (storedData.rapportGenerert &&
-      storedData.rapportGenerert !== fetched.rapportGenerert);
+      storedData.rapportGenerert !== fetched.rapportGenerert)
+  );
 }
 
 async function storeResult(fetched, dbPath, database) {
