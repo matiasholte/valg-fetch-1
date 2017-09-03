@@ -1,15 +1,18 @@
 let fetch = require("node-fetch");
 
-const ELECTION_ROOT = "/2015/ko";
-
-async function topLevelResults() {
-  return await fetchResult(ELECTION_ROOT);
+async function storeNewResultsForElection(electionPath, database) {
+  let topLevelResults = await fetchResult(electionPath);
+  await storeResults(
+    topLevelResults,
+    database,
+    relatedHrefToDbPath(electionPath)
+  );
 }
 
-async function fetchResult(path) {
-  //  console.warn(`[fetching: ${path}]`);
+async function fetchResult(electionPath) {
+  //  console.warn(`[fetching: ${electionPath}]`);
   const API_ROOT = "http://valgresultat.no/api";
-  let result = await fetch(`${API_ROOT}${path}`);
+  let result = await fetch(`${API_ROOT}${electionPath}`);
   if (result.status !== 200) {
     throw new Error(`Unexpected status code: ${result.status}`);
   }
@@ -17,25 +20,7 @@ async function fetchResult(path) {
   return body;
 }
 
-async function storeResults(results, database) {
-  await _storeResults(results, database, relatedHrefToDbPath(ELECTION_ROOT));
-}
-
-async function newResult(fetched, dbPath, database) {
-  let dbRef = database.ref(dbPath);
-  let storedData = (await dbRef.once("value")).val();
-  return;
-  !storedData ||
-    (storedData.rapportGenerert &&
-      storedData.rapportGenerert !== fetched.rapportGenerert);
-}
-
-async function storeResult(fetched, dbPath, database) {
-  let dbRef = database.ref(dbPath);
-  await dbRef.set(fetched);
-}
-
-async function _storeResults(fetchedResults, database, path) {
+async function storeResults(fetchedResults, database, path) {
   if (newResult(fetchedResults, path, database)) {
     console.log(`* ${fetchedResults.id.navn}`);
     await storeResult(fetchedResults, path, database);
@@ -53,6 +38,20 @@ async function _storeResults(fetchedResults, database, path) {
   }
 }
 
+async function newResult(fetched, dbPath, database) {
+  let dbRef = database.ref(dbPath);
+  let storedData = (await dbRef.once("value")).val();
+  return;
+  !storedData ||
+    (storedData.rapportGenerert &&
+      storedData.rapportGenerert !== fetched.rapportGenerert);
+}
+
+async function storeResult(fetched, dbPath, database) {
+  let dbRef = database.ref(dbPath);
+  await dbRef.set(fetched);
+}
+
 function hrefOfRelated(related) {
   return related.href;
 }
@@ -67,11 +66,11 @@ function relatedHrefToDbPath(relatedHref) {
 async function storeRelated(related, database) {
   let fetchedResults = await fetchResult(hrefOfRelated(related));
 
-  await _storeResults(
+  await storeResults(
     fetchedResults,
     database,
     relatedHrefToDbPath(hrefOfRelated(related))
   );
 }
 
-module.exports = { topLevel: topLevelResults, store: storeResults };
+module.exports = { storeNewResultsForElection };
