@@ -1,5 +1,3 @@
-var firebase = require('firebase')
-var config = require('./secrets')
-
-// Initialize Firebase
-firebase.initializeApp(config);
+require("babel-register");
+require("babel-polyfill");
+require("./app");
