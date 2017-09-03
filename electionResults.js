@@ -7,7 +7,7 @@ async function topLevelResults() {
 }
 
 async function fetchResult(path) {
-  console.warn(`[fetching: ${path}]`);
+  //  console.warn(`[fetching: ${path}]`);
   let result = await fetch(`http://valgresultat.no${path}`);
   if (result.status !== 200) {
     throw new Error(`Unexpected status code: ${result.status}`);
@@ -31,30 +31,35 @@ async function _storeResults(fetchedResults, database, path) {
     console.log(`* ${fetchedResults.id.navn}`);
     await dbRef.set(fetchedResults);
   }
-  let relatedResultsWithNewData = fetchedResults[
-    "_links"
-  ].related.filter(async related => {
-    let relatedRef = database.ref(related.hrefNavn);
+  for (let relatedLink of fetchedResults["_links"].related) {
+    let relatedRef = database.ref(hrefNavnToDbPath(relatedLink.hrefNavn));
     let relatedData = (await relatedRef.once("value")).val();
-    return (
+    //    console.log(`relatedData: ${relatedData}`, `related: ${relatedLink}`);
+    if (
       !relatedData ||
       (relatedData.rapportGenerert &&
-        relatedData.rapportGenerert !== related.rapportGenerert)
-    );
-  });
-  await storeRelated(relatedResultsWithNewData, database);
+        relatedData.rapportGenerert !== relatedLink.rapportGenerert)
+    ) {
+      await storeRelated(relatedLink, database);
+    }
+  }
+}
+
+function hrefNavnToDbPath(hrefNavn) {
+  return `/api${hrefNavn.slice(0, 8)}${hrefNavn
+    .slice(8)
+    .replace(/\//g, "/underordnet/")}`;
 }
 
 async function storeRelated(related, database) {
-  for (let rel of related) {
-    let apiPath = `/api${rel.hrefNavn}`;
-    let fetchedResults = await fetchResult(apiPath);
+  let apiPath = `/api${related.hrefNavn}`;
+  let fetchedResults = await fetchResult(apiPath);
 
-    let dbPath = `${apiPath.slice(0, 12)}${apiPath
-      .slice(12)
-      .replace(/\//g, "/underordnet/")}`;
-    await _storeResults(fetchedResults, database, dbPath);
-  }
+  await _storeResults(
+    fetchedResults,
+    database,
+    hrefNavnToDbPath(related.hrefNavn)
+  );
 }
 
 module.exports = { topLevel: topLevelResults, store: storeResults };
