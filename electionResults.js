@@ -1,12 +1,8 @@
 let fetch = require("node-fetch");
 
 async function storeNewResults(electionPath, database) {
-  let topLevelResults = await fetchResult(electionPath);
-  await storeResults(
-    topLevelResults,
-    database,
-    electionPathToDbPath(electionPath)
-  );
+  let fetched = await fetchResult(electionPath);
+  await storeResults(fetched, database);
 }
 
 async function fetchResult(electionPath) {
@@ -20,51 +16,45 @@ async function fetchResult(electionPath) {
   return body;
 }
 
-async function storeResults(fetchedResults, database, path) {
-  if (await newResult(fetchedResults, path, database)) {
-    console.log(`NEW RESULTS: ${fetchedResults.id.navn}`);
-    await storeResult(fetchedResults, path, database);
+async function storeResults(fetched, database) {
+  if (
+    await newResult(fetched.id.nr, fetched.tidspunkt.rapportGenerert, database)
+  ) {
+    console.log(`NEW RESULTS: ${fetched.id.navn}`);
+    await storeResult(fetched, database);
   } else {
-    console.log(`NO CHANGE: ${fetchedResults.id.navn}`);
+    console.log(`NO CHANGE: ${fetched.id.navn}`);
   }
-  for (let relatedResult of fetchedResults["_links"].related) {
+  for (let relatedResult of fetched["_links"].related) {
     let relatedPath = electionPathOfRelated(relatedResult);
     if (
-      await newResult(
-        relatedResult,
-        electionPathToDbPath(relatedPath),
-        database
-      )
+      await newResult(relatedResult.nr, relatedResult.rapportGenerert, database)
     ) {
       await storeNewResults(relatedPath, database);
     }
   }
 }
 
-async function newResult(fetched, dbPath, database) {
-  let dbRef = database.ref(dbPath);
-  let storedData = (await dbRef.once("value")).val();
-  return (
-    !storedData ||
-    (storedData.rapportGenerert &&
-      storedData.rapportGenerert !== fetched.rapportGenerert)
-  );
+function dbPathOfFetched(nr, rapportGenerert) {
+  const DB_ROOT = "/results";
+  return `${DB_ROOT}/${nr}/${rapportGenerert}`;
 }
 
-async function storeResult(fetched, dbPath, database) {
-  let dbRef = database.ref(dbPath);
+async function newResult(nr, rapportGenerert, database) {
+  let dbRef = database.ref(dbPathOfFetched(nr, rapportGenerert));
+  let stored = (await dbRef.once("value")).val();
+  return !stored;
+}
+
+async function storeResult(fetched, database) {
+  let dbRef = database.ref(
+    dbPathOfFetched(fetched.id.nr, fetched.tidspunkt.rapportGenerert)
+  );
   await dbRef.set(fetched);
 }
 
 function electionPathOfRelated(related) {
   return related.href;
-}
-
-function electionPathToDbPath(electionPath) {
-  const DB_ROOT = "/valgresultat";
-  return `${DB_ROOT}${electionPath.slice(0, 8)}${electionPath
-    .slice(8)
-    .replace(/\//g, "/underordnet/")}`;
 }
 
 module.exports = { storeNewResults };
