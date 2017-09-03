@@ -1,14 +1,15 @@
 let fetch = require("node-fetch");
 
-const API_ROOT = "/api/2015/ko";
+const ELECTION_ROOT = "/2015/ko";
 
 async function topLevelResults() {
-  return await fetchResult(API_ROOT);
+  return await fetchResult(ELECTION_ROOT);
 }
 
 async function fetchResult(path) {
   //  console.warn(`[fetching: ${path}]`);
-  let result = await fetch(`http://valgresultat.no${path}`);
+  const API_ROOT = "http://valgresultat.no/api";
+  let result = await fetch(`${API_ROOT}${path}`);
   if (result.status !== 200) {
     throw new Error(`Unexpected status code: ${result.status}`);
   }
@@ -17,7 +18,7 @@ async function fetchResult(path) {
 }
 
 async function storeResults(results, database) {
-  await _storeResults(results, database, API_ROOT);
+  await _storeResults(results, database, relatedHrefToDbPath(ELECTION_ROOT));
 }
 
 async function _storeResults(fetchedResults, database, path) {
@@ -32,7 +33,7 @@ async function _storeResults(fetchedResults, database, path) {
     await dbRef.set(fetchedResults);
   }
   for (let relatedLink of fetchedResults["_links"].related) {
-    let relatedRef = database.ref(hrefNavnToDbPath(relatedLink.hrefNavn));
+    let relatedRef = database.ref(relatedHrefToDbPath(relatedLink.hrefNavn));
     let relatedData = (await relatedRef.once("value")).val();
     //    console.log(`relatedData: ${relatedData}`, `related: ${relatedLink}`);
     if (
@@ -45,20 +46,24 @@ async function _storeResults(fetchedResults, database, path) {
   }
 }
 
-function hrefNavnToDbPath(hrefNavn) {
-  return `/api${hrefNavn.slice(0, 8)}${hrefNavn
+function hrefOfRelated(related) {
+  return related.href;
+}
+
+function relatedHrefToDbPath(relatedHref) {
+  const DB_ROOT = "/valgresultat";
+  return `${DB_ROOT}${relatedHref.slice(0, 8)}${relatedHref
     .slice(8)
     .replace(/\//g, "/underordnet/")}`;
 }
 
 async function storeRelated(related, database) {
-  let apiPath = `/api${related.hrefNavn}`;
-  let fetchedResults = await fetchResult(apiPath);
+  let fetchedResults = await fetchResult(hrefOfRelated(related));
 
   await _storeResults(
     fetchedResults,
     database,
-    hrefNavnToDbPath(related.hrefNavn)
+    relatedHrefToDbPath(hrefOfRelated(related))
   );
 }
 
