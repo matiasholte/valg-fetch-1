@@ -1,8 +1,24 @@
 import firebase from "firebase";
-var config = require("./secrets");
+import fetch from "node-fetch";
+let config = require("./secrets");
 
 async function run() {
-  // Initialize Firebase
+  //  let database = await initializeDatabase();
+  await checkElectionResults();
+  process.exit(0);
+}
+
+async function checkElectionResults() {
+  let result = await fetch("http://valgresultat.no/api/2015/ko");
+  if (result.status !== 200) {
+    console.error(result.status);
+    return;
+  }
+  let body = await result.json();
+  console.log(body);
+}
+
+async function initializeFirebase() {
   firebase.initializeApp(config.fb);
   try {
     await firebase
@@ -13,7 +29,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log("logged in!");
+  return firebase.database();
 }
 
 run();
