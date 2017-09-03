@@ -15,9 +15,12 @@
     "node-fetch": "^1.7.2"
   },
   "devDependencies": {
+    "babel-eslint": "^7.2.3",
     "babel-preset-env": "^1.6.0",
     "babel-preset-es2017": "^6.24.1",
     "babel-register": "^6.26.0",
+    "eslint": "^4.6.0",
+    "eslint-config-prettier": "^2.4.0",
     "prettier": "^1.6.1"
   }
 }
