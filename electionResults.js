@@ -12,7 +12,16 @@ async function topLevelResults() {
 }
 
 async function storeResults(results, database) {
-  await database.ref(API_ROOT).set(results);
+  let topLevelRef = database.ref(API_ROOT);
+  let topLevelData = (await topLevelRef.once("value")).val();
+  if (
+    !topLevelData ||
+    (topLevelData.rapportGenerert &&
+      topLevelData.rapportGenerert !== results.rapportGenerert)
+  ) {
+    console.log("* landsresultat");
+    await topLevelRef.set(results);
+  }
 }
 
 module.exports = { topLevel: topLevelResults, store: storeResults };
