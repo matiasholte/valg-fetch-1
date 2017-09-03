@@ -31,7 +31,7 @@ async function storeResults(fetchedResults, database, path) {
     if (
       await newResult(
         relatedResult,
-        relatedHrefToDbPath(relatedResult.hrefNavn),
+        relatedHrefToDbPath(hrefOfRelated(relatedResult)),
         database
       )
     ) {
