@@ -19,9 +19,6 @@ if (command === "update") {
 if (command === "clear") {
   clear(argv.e);
 }
-if (command === "init") {
-  init(argv.e);
-}
 
 async function update(electionPath) {
   let db = await database.initialize();
@@ -36,13 +33,5 @@ async function clear(electionPath) {
   console.log("initialized database");
   await db.ref(electionPath).remove();
   console.log("deleted election", electionPath);
-  process.exit(0);
-}
-
-async function init(electionPath) {
-  let db = await database.initialize();
-  console.log("initialized database");
-  await electionResults.storeAllResults(electionPath, db);
-  console.log("stored results from api");
   process.exit(0);
 }
