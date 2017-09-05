@@ -24,13 +24,14 @@ async function fetchResult(electionPath) {
 
 async function storeResults(fetched, database, baseElectionPath) {
   if (
-    await newResult(
-      fetched.id.nr,
-      fetched.id.nivaa,
-      fetched.tidspunkt.rapportGenerert,
+    await newResult({
+      nr: fetched.id.nr,
+      nivaa: fetched.id.nivaa,
+      rapportGenerert: fetched.tidspunkt.rapportGenerert,
       database,
-      baseElectionPath
-    )
+      baseElectionPath,
+      overordnetNr: fetched._links.up.nr
+    })
   ) {
     console.log(`NEW RESULTS: ${fetched.id.navn}`);
     await storeResult(fetched, database, baseElectionPath);
@@ -40,13 +41,14 @@ async function storeResults(fetched, database, baseElectionPath) {
   for (let relatedResult of fetched["_links"].related) {
     let relatedPath = electionPathOfRelated(relatedResult);
     if (
-      await newResult(
-        relatedResult.nr,
-        LEVELS[LEVELS.indexOf(fetched.id.nivaa) + 1],
-        relatedResult.rapportGenerert,
+      await newResult({
+        nr: relatedResult.nr,
+        nivaa: LEVELS[LEVELS.indexOf(fetched.id.nivaa) + 1],
+        rapportGenerert: relatedResult.rapportGenerert,
         database,
-        baseElectionPath
-      )
+        baseElectionPath,
+        overordnetNr: fetched.id.nr
+      })
     ) {
       await storeNewResults(relatedPath, database, baseElectionPath);
     }
@@ -55,19 +57,33 @@ async function storeResults(fetched, database, baseElectionPath) {
 
 const LEVELS = ["land", "fylke", "kommune", "bydel", "stemmekrets"];
 
-function dbPathOfFetched(nr, nivaa, rapportGenerert, baseElectionPath) {
-  return `${baseElectionPath}/${nivaa}-${nr}/${rapportGenerert}`;
+function dbPathOfFetched({
+  nr,
+  nivaa,
+  rapportGenerert,
+  baseElectionPath,
+  overordnetNr
+}) {
+  let uniktNr = nivaa == LEVELS[4] ? `${overordnetNr}-${nr}` : nr;
+  return `${baseElectionPath}/${nivaa}-${uniktNr}/${rapportGenerert}`;
 }
 
-async function newResult(
+async function newResult({
   nr,
   nivaa,
   rapportGenerert,
   database,
-  baseElectionPath
-) {
+  baseElectionPath,
+  overordnetNr
+}) {
   let dbRef = database.ref(
-    dbPathOfFetched(nr, nivaa, rapportGenerert, baseElectionPath)
+    dbPathOfFetched({
+      nr,
+      nivaa,
+      rapportGenerert,
+      baseElectionPath,
+      overordnetNr
+    })
   );
   let stored = (await dbRef.once("value")).val();
   return !stored;
@@ -75,12 +91,13 @@ async function newResult(
 
 async function storeResult(fetched, database, baseElectionPath) {
   let dbRef = database.ref(
-    dbPathOfFetched(
-      fetched.id.nr,
-      fetched.id.nivaa,
-      fetched.tidspunkt.rapportGenerert,
-      baseElectionPath
-    )
+    dbPathOfFetched({
+      nr: fetched.id.nr,
+      nivaa: fetched.id.nivaa,
+      rapportGenerert: fetched.tidspunkt.rapportGenerert,
+      baseElectionPath: baseElectionPath,
+      overordnetNr: fetched._links.up.nr
+    })
   );
   await dbRef.set(fetched);
 }
