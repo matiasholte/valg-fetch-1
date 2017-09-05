@@ -23,7 +23,7 @@ async function fetchResult(electionPath) {
   //  console.warn(`[fetching: ${electionPath}]`);
   const API_ROOT = "http://valgresultat.no/api";
   let result = await fetch(`${API_ROOT}${electionPath}`);
-  if (result.status !== 200) {
+  if (![200, 269].includes(result.status)) {
     throw new Error(`Unexpected status code: ${result.status}`);
   }
   let body = await result.json();
