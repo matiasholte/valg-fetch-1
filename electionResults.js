@@ -2,13 +2,21 @@
 
 let fetch = require("node-fetch").default;
 
-async function storeNewResults(
+async function storeNewResults({
+  electionPath,
+  database,
+  baseElectionPath
+}: {
   electionPath: string,
   database: Database,
-  baseElectionPath: ?string = undefined
-) {
+  baseElectionPath?: string
+}) {
   let fetched = await fetchResult(electionPath);
-  await storeResults(fetched, database, baseElectionPath || electionPath);
+  await storeResults({
+    fetched,
+    database,
+    baseElectionPath: baseElectionPath || electionPath
+  });
 }
 
 async function fetchResult(electionPath) {
@@ -22,7 +30,7 @@ async function fetchResult(electionPath) {
   return body;
 }
 
-async function storeResults(fetched, database, baseElectionPath) {
+async function storeResults({ fetched, database, baseElectionPath }) {
   if (
     await newResult({
       nr: fetched.id.nr,
@@ -50,7 +58,11 @@ async function storeResults(fetched, database, baseElectionPath) {
         overordnetNr: fetched.id.nr
       })
     ) {
-      await storeNewResults(relatedPath, database, baseElectionPath);
+      await storeNewResults({
+        electionPath: relatedPath,
+        database,
+        baseElectionPath
+      });
     }
   }
 }

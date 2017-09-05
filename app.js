@@ -26,7 +26,7 @@ if (command === "init") {
 async function update(electionPath) {
   let db = await database.initialize();
   console.log("initialized database");
-  await electionResults.storeNewResults(electionPath, db);
+  await electionResults.storeNewResults({ electionPath, database: db });
   console.log("stored results from api");
   process.exit(0);
 }
