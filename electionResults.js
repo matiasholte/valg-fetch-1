@@ -69,15 +69,9 @@ async function storeResults({ fetched, database, baseElectionPath }) {
 
 const LEVELS = ["land", "fylke", "kommune", "bydel", "stemmekrets"];
 
-function dbPathOfFetched({
-  nr,
-  nivaa,
-  rapportGenerert,
-  baseElectionPath,
-  overordnetNr
-}) {
+function dbPathOfFetched({ nr, nivaa, baseElectionPath, overordnetNr }) {
   let uniktNr = nivaa == LEVELS[4] ? `${overordnetNr}-${nr}` : nr;
-  return `${baseElectionPath}/${nivaa}-${uniktNr}/${rapportGenerert}`;
+  return `${baseElectionPath}/${nivaa}-${uniktNr}`;
 }
 
 async function newResult({
