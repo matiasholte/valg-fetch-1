@@ -34,7 +34,7 @@ async function storeResults(fetched, database, baseElectionPath) {
     })
   ) {
     console.log(`NEW RESULTS: ${fetched.id.navn}`);
-    await storeResult(fetched, database, baseElectionPath);
+    await storeInDatabase(fetched, database, baseElectionPath);
   } else {
     console.log(`NO CHANGE: ${fetched.id.navn}`);
   }
@@ -89,7 +89,7 @@ async function newResult({
   return !stored;
 }
 
-async function storeResult(fetched, database, baseElectionPath) {
+async function storeInDatabase(fetched, database, baseElectionPath) {
   let dbRef = database.ref(
     dbPathOfFetched({
       nr: fetched.id.nr,
