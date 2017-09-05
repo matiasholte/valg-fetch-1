@@ -1,7 +1,9 @@
+// @flow
+
 let electionResults = require("./electionResults");
 let database = require("./database");
 
-const ELECTION_PATH = "/2015/ko";
+const ELECTION_PATH = "/2017/st";
 
 async function run() {
   let db = await database.initialize();

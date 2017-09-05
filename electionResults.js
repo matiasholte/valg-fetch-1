@@ -1,9 +1,11 @@
-let fetch = require("node-fetch");
+// @flow
+
+let fetch = require("node-fetch").default;
 
 async function storeNewResults(
-  electionPath,
-  database,
-  baseElectionPath = undefined
+  electionPath: string,
+  database: Database,
+  baseElectionPath: ?string = undefined
 ) {
   let fetched = await fetchResult(electionPath);
   await storeResults(fetched, database, baseElectionPath || electionPath);
@@ -26,7 +28,8 @@ async function storeResults(fetched, database, baseElectionPath) {
       fetched.id.nr,
       fetched.id.nivaa,
       fetched.tidspunkt.rapportGenerert,
-      database
+      database,
+      baseElectionPath
     )
   ) {
     console.log(`NEW RESULTS: ${fetched.id.navn}`);
