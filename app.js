@@ -9,21 +9,26 @@ let argv = cmdParser
     "Fetch Norwegian election results and put them in a Firebase instance.\nUsage:$0"
   )
   .demand(1)
-  .options("e", { alias: "electionPath", default: "/2017/st" }).argv;
+  .options("e", { alias: "electionPath", default: "/2017/st" })
+  .options("i", { alias: "indexParty", default: "MDG" }).argv;
 
 const command = argv._[0];
 
 if (command === "update") {
-  update(argv.e);
+  update(argv.e, argv.i.split(","));
 }
 if (command === "clear") {
   clear(argv.e);
 }
 
-async function update(electionPath) {
+async function update(electionPath, indexParties) {
   let db = await database.initialize();
   console.log("initialized database");
-  await electionResults.storeNewResults({ electionPath, database: db });
+  await electionResults.storeNewResults({
+    electionPath,
+    database: db,
+    indexParties
+  });
   console.log("stored results from api");
   process.exit(0);
 }

@@ -5,17 +5,20 @@ let fetch = require("node-fetch").default;
 async function storeNewResults({
   electionPath,
   database,
-  baseElectionPath
+  baseElectionPath,
+  indexParties
 }: {
   electionPath: string,
   database: Database,
-  baseElectionPath?: string
+  baseElectionPath?: string,
+  indexParties: string[]
 }) {
   let fetched = await fetchResult(electionPath);
   await storeResults({
     fetched,
     database,
-    baseElectionPath: baseElectionPath || electionPath
+    baseElectionPath: baseElectionPath || electionPath,
+    indexParties
   });
 }
 
@@ -30,7 +33,28 @@ async function fetchResult(electionPath) {
   return body;
 }
 
-async function storeResults({ fetched, database, baseElectionPath }) {
+function process(fetched, indexParties) {
+  const NO_RESULT = -1;
+  return {
+    ...fetched,
+    index: indexParties
+      .map(partyCode => ({
+        result: (fetched.partier.find(
+          parti => parti.id.partikode === partyCode
+        ) || { stemmer: { resultat: NO_RESULT } }).stemmer.resultat,
+        code: partyCode
+      }))
+      .filter(party => party.result !== NO_RESULT)
+      .reduce((a, b) => ({ ...a, [b.code]: b.result }), {})
+  };
+}
+
+async function storeResults({
+  fetched,
+  database,
+  baseElectionPath,
+  indexParties
+}) {
   if (
     await newResult({
       nr: fetched.id.nr,
@@ -42,11 +66,15 @@ async function storeResults({ fetched, database, baseElectionPath }) {
     })
   ) {
     console.log(`NEW RESULTS: ${fetched.id.navn}`);
-    await storeInDatabase(fetched, database, baseElectionPath);
+    await storeInDatabase(
+      process(fetched, indexParties),
+      database,
+      baseElectionPath
+    );
   } else {
     console.log(`NO CHANGE: ${fetched.id.navn}`);
   }
-  for (let relatedResult of fetched["_links"].related) {
+  for (let relatedResult of fetched._links.related) {
     let relatedPath = electionPathOfRelated(relatedResult);
     if (
       await newResult({
@@ -61,7 +89,8 @@ async function storeResults({ fetched, database, baseElectionPath }) {
       await storeNewResults({
         electionPath: relatedPath,
         database,
-        baseElectionPath
+        baseElectionPath,
+        indexParties
       });
     }
   }
