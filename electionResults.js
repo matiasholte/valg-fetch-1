@@ -6,19 +6,24 @@ async function storeNewResults({
   electionPath,
   database,
   baseElectionPath,
-  indexParties
-}: {
+  settings
+  }: {
   electionPath: string,
   database: Database,
   baseElectionPath?: string,
-  indexParties: string[]
+  settings:
+    {
+      indexParties: string[],
+      depth: number,
+      parallel: boolean
+    }
 }) {
   let fetched = await fetchResult(electionPath);
   await storeResults({
     fetched,
     database,
     baseElectionPath: baseElectionPath || electionPath,
-    indexParties
+    settings
   });
 }
 
@@ -33,11 +38,11 @@ async function fetchResult(electionPath) {
   return body;
 }
 
-function process(fetched, indexParties) {
+function process(fetched, settings) {
   const NO_RESULT = -1;
   return {
     ...fetched,
-    index: indexParties
+    index: settings.indexParties
       .map(partyCode => ({
         result: (fetched.partier.find(
           parti => parti.id.partikode === partyCode
@@ -53,7 +58,7 @@ async function storeResults({
   fetched,
   database,
   baseElectionPath,
-  indexParties
+  settings
 }) {
   if (
     await newResult({
@@ -67,13 +72,17 @@ async function storeResults({
   ) {
     console.log(`NEW RESULTS: ${fetched.id.navn}`);
     await storeInDatabase(
-      process(fetched, indexParties),
+      process(fetched, settings),
       database,
       baseElectionPath
     );
   } else {
     console.log(`NO CHANGE: ${fetched.id.navn}`);
   }
+
+  if (getLeveldepthFromName(fetched.id.nivaa) >= settings.depth) {return;}
+
+  let outstandingTasks = [(resolve => setTimeout(resolve, 1000))];
   for (let relatedResult of fetched._links.related) {
     let relatedPath = electionPathOfRelated(relatedResult);
     if (
@@ -86,17 +95,29 @@ async function storeResults({
         overordnetNr: fetched.id.nr
       })
     ) {
-      await storeNewResults({
+      let task = storeNewResults({
         electionPath: relatedPath,
         database,
         baseElectionPath,
-        indexParties
+        settings
       });
+      if (settings.parallel) {
+        outstandingTasks.push(task);
+      } else {
+        await task;
+      }
     }
+  }
+  if (settings.parallel) {
+    await Promise.all(outstandingTasks);
   }
 }
 
 const LEVELS = ["land", "fylke", "kommune", "bydel", "stemmekrets"];
+
+function getLeveldepthFromName(nivaa) {
+  return LEVELS.indexOf(nivaa);
+}
 
 function dbPathOfFetched({ nr, nivaa, baseElectionPath, overordnetNr }) {
   let uniktNr = nivaa == LEVELS[4] ? `${overordnetNr}-${nr}` : nr;
