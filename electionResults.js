@@ -15,7 +15,8 @@ async function storeNewResults({
     {
       indexParties: string[],
       depth: number,
-      parallel: boolean
+      parallel: boolean,
+      backup: boolean
     }
 }) {
   let fetched = await fetchResult(electionPath);
@@ -74,7 +75,8 @@ async function storeResults({
     await storeInDatabase(
       process(fetched, settings),
       database,
-      baseElectionPath
+      baseElectionPath,
+      settings
     );
   } else {
     console.log(`NO CHANGE: ${fetched.id.navn}`);
@@ -124,6 +126,11 @@ function dbPathOfFetched({ nr, nivaa, baseElectionPath, overordnetNr }) {
   return `${baseElectionPath}/${nivaa}-${uniktNr}`;
 }
 
+function dbPathOfBackup({ nr, nivaa, rapportGenerert, baseElectionPath, overordnetNr }) {
+  let uniktNr = nivaa == LEVELS[4] ? `${overordnetNr}-${nr}` : nr;
+  return `${baseElectionPath}/backup/${nivaa}-${uniktNr}/${rapportGenerert}`;
+}
+
 async function newResult({
   nr,
   nivaa,
@@ -145,17 +152,28 @@ async function newResult({
   return !stored;
 }
 
-async function storeInDatabase(fetched, database, baseElectionPath) {
+async function storeInDatabase(fetched, database, baseElectionPath, settings) {
   let dbRef = database.ref(
     dbPathOfFetched({
       nr: fetched.id.nr,
       nivaa: fetched.id.nivaa,
-      rapportGenerert: fetched.tidspunkt.rapportGenerert,
       baseElectionPath: baseElectionPath,
       overordnetNr: fetched._links.up.nr
     })
   );
   await dbRef.set(fetched);
+  if (settings.backup) {
+    let dbBackupRef = database.ref(
+      dbPathOfBackup({
+        nr: fetched.id.nr,
+        nivaa: fetched.id.nivaa,
+        rapportGenerert: fetched.tidspunkt.rapportGenerert,
+        baseElectionPath: baseElectionPath,
+        overordnetNr: fetched._links.up.nr
+      })
+    );
+    await dbBackupRef.set(fetched);
+  }
 }
 
 function electionPathOfRelated(related) {
